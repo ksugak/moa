@@ -1,0 +1,13 @@
+{
+  "name": "moa-community-collector",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "collect": "node scripts/collect.mjs",
+    "build": "node scripts/collect.mjs && vite build"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}

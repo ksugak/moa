@@ -1,0 +1,31 @@
+{
+  "_help": "큰 카테고리 설정. keywords: 관련 글로 볼 단어(제목에 들어 있으면 관련 글). minRecommend/minComments: 둘 중 하나만 넘으면 모읍니다. requireKeyword=false 인 곳은 팀 전용 게시판이라 모든 글을 관련 글로 봅니다.",
+  "pages": 3,
+  "categories": [
+    {
+      "id": "dplus",
+      "name": "디플러스기아",
+      "color": "#c7a63b",
+      "keywords": ["디플러스기아", "DK", "딮기", "딮"],
+      "minRecommend": 3,
+      "minComments": 3,
+      "sources": [
+        { "site": "dcinside", "name": "디시 디플러스기아 갤", "url": "https://gall.dcinside.com/mgallery/board/lists/?id=dwg", "requireKeyword": false },
+        { "site": "fmkorea", "name": "에펨 LoL", "url": "https://www.fmkorea.com/index.php?mid=lol", "requireKeyword": true, "search": true, "pages": 1 }
+      ]
+    },
+    {
+      "id": "kiwoom",
+      "name": "키움히어로즈",
+      "color": "#820024",
+      "keywords": ["키움", "키움히어로즈", "큠", "혀", "히어로즈"],
+      "minRecommend": 3,
+      "minComments": 3,
+      "sources": [
+        { "site": "dcinside", "name": "디시 키움 갤", "url": "https://gall.dcinside.com/board/lists/?id=sh_new", "requireKeyword": false },
+        { "site": "fmkorea", "name": "에펨 야구", "url": "https://www.fmkorea.com/index.php?mid=baseball", "requireKeyword": true, "search": true, "pages": 1 },
+        { "site": "mlbpark", "name": "엠팍 키움 말머리", "url": "https://mlbpark.donga.com/mp/b.php?search_select=sct&search_input=&select=spf&m=search&b=kbotown&query=%ED%82%A4%EC%9B%80", "requireKeyword": false }
+      ]
+    }
+  ]
+}
