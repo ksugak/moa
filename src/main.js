@@ -31,7 +31,7 @@ function ago(ts) {
   return `${Math.floor(mins / 1440)}일 전`;
 }
 
-const SITE_NAMES = { dcinside: '디시', fmkorea: '에펨', mlbpark: '엠팍', inven: '인벤' };
+const SITE_NAMES = { dcinside: '디시', fmkorea: '에펨', mlbpark: '엠팍', inven: '인벤', youtube: '유튜브' };
 
 // Team colours live in style.css (.t-kiwoom / .t-dplus and body.team-…). Other categories get a neutral look.
 const TEAM_SHORT = { kiwoom: '키움', dplus: 'DK' };
@@ -93,7 +93,7 @@ function postRow(p, o = {}) {
   const on = s.scraps.includes(p.id);
   const lead = o.rank ? `<span class="rank">${o.rank}</span>` : '<span class="bar"></span>';
   const stats = [
-    p.site === 'mlbpark' ? '' : `<span>추천 <b>${fmt(p.recommends)}</b></span>`, // 엠팍 목록에는 추천수가 없습니다
+    p.site === 'mlbpark' || p.site === 'youtube' ? '' : `<span>추천 <b>${fmt(p.recommends)}</b></span>`, // 엠팍 목록에는 추천수가 없고, 유튜브는 좋아요를 쓰지 않습니다
     `<span>댓글 <b>${fmt(p.comments)}</b></span>`,
     `<span>조회 <b>${fmt(p.views)}</b></span>`,
   ].join('');
@@ -102,7 +102,7 @@ function postRow(p, o = {}) {
     ${lead}
     <span class="post-body">
       <span class="post-title">${highlight(p.title)}</span>
-      <span class="post-meta">${cat ? '' : `<i class="tchip">${esc(p.catShort)}</i>`}<span>${esc(p.source || '')}</span><span>${ago(p.ts) || esc(p.date || '')}</span>${stats}</span>
+      <span class="post-meta">${cat ? '' : `<i class="tchip">${esc(p.catShort)}</i>`}<span>${esc(p.source || '')}${p.author ? ` · ${esc(p.author)}` : ''}</span><span>${ago(p.ts) || esc(p.date || '')}</span>${stats}</span>
     </span>
     ${value}
     <button class="scrap${on ? ' on' : ''}" data-scrap="${p.id}" aria-label="스크랩" aria-pressed="${on}">${on ? '★' : '☆'}</button>
@@ -153,7 +153,7 @@ function sourcesCard(cats = cat ? [cat] : CATS) {
     ${cats.map((c) => `<div class="rule ${tcls(c.id)}">
       <div class="rule-head"><i class="tchip">${esc(c.short)}</i><b>${esc(c.name)}</b></div>
       <p class="hint">추천 ${c.minRecommend}개 이상 또는 댓글 ${c.minComments}개 이상 · 키워드 ${esc(c.keywords.join(', '))}</p>
-      <ul>${c.sources.map((x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.source)}</a><span>${fmt(x.kept)}개 모음 / ${fmt(x.seen)}개 확인${x.error ? ` <em>${x.kept ? '일부만 읽음' : '이번엔 못 읽음'}</em>` : ''}</span></li>`).join('')}</ul>
+      <ul>${c.sources.map((x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.source)}</a><span>${x.skipped ? '<em>API 키 필요</em>' : `${fmt(x.kept)}개 모음 / ${fmt(x.seen)}개 확인${x.error ? ` <em>${x.kept ? '일부만 읽음' : '이번엔 못 읽음'}</em>` : ''}`}${x.rule ? `<small>${esc(x.rule)}</small>` : ''}</span></li>`).join('')}</ul>
     </div>`).join('')}
     <p class="hint">마지막으로 모은 시각: ${esc(updatedAgo || '-')}</p>
   </section>`;

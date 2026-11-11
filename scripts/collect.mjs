@@ -3,6 +3,7 @@
 // if a board can't be read, the posts collected last time are kept.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { homedir } from 'node:os';
 
 const root = resolve(import.meta.dirname, '..');
 const config = JSON.parse(readFileSync(resolve(root, 'collect.config.json'), 'utf8'));
@@ -203,6 +204,63 @@ function urlsFor(src, cat) {
   return list;
 }
 
+/* ---------- YouTube ----------
+   Uses the official YouTube Data API, which needs a key (see 외부에서_보는_방법.md).
+   The key is read from the YOUTUBE_API_KEY environment variable or from the file
+   ".moa-youtube-key" in the user's home folder; it is never written to this project.
+   A PC without a key simply keeps the videos collected last time. Searching costs API quota
+   (100 units per keyword, 10,000 free units a day), so videos are refreshed every few hours. */
+function youtubeKey() {
+  if (process.env.YOUTUBE_API_KEY) return process.env.YOUTUBE_API_KEY.trim();
+  const file = resolve(homedir(), '.moa-youtube-key');
+  return existsSync(file) ? readFileSync(file, 'utf8').replace(/^﻿/, '').trim() : '';
+}
+
+async function ytApi(path, query, key) {
+  const u = new URL(`https://www.googleapis.com/youtube/v3/${path}`);
+  for (const [k, v] of Object.entries(query)) u.searchParams.set(k, v);
+  u.searchParams.set('key', key);
+  let r;
+  try { r = await fetch(u, { signal: AbortSignal.timeout(15000) }); } catch { throw new Error('유튜브 API 접속 실패'); } // never include the address: it holds the key
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`유튜브 API ${r.status} ${body?.error?.errors?.[0]?.reason || ''}`.trim());
+  return body;
+}
+
+async function collectYoutube(cat, yt, key) {
+  const words = cat.keywords.filter((k) => !(yt.skipKeywords || []).includes(k));
+  const terms = words.filter((k) => !words.some((o) => o !== k && k.includes(o)));
+  const after = new Date(Date.now() - yt.days * 86400e3).toISOString();
+  const ids = new Set();
+  for (const q of terms) {
+    const res = await ytApi('search', { part: 'id', type: 'video', q, order: 'viewCount', maxResults: '50', publishedAfter: after, regionCode: 'KR', relevanceLanguage: 'ko' }, key);
+    for (const it of res.items || []) if (it.id?.videoId) ids.add(it.id.videoId);
+  }
+  const list = [...ids];
+  const found = [];
+  for (let i = 0; i < list.length; i += 50) {
+    const res = await ytApi('videos', { part: 'snippet,statistics', id: list.slice(i, i + 50).join(',') }, key);
+    for (const v of res.items || []) {
+      const title = v.snippet?.title || '';
+      const channel = v.snippet?.channelTitle || '';
+      // YouTube search also matches descriptions and tags; keep a video only when a keyword is in its title or channel name.
+      const hay = `${title} ${channel}`.toLowerCase();
+      const kw = words.find((k) => hay.includes(k.toLowerCase())) || null;
+      const views = Number(v.statistics?.viewCount || 0);
+      if (!kw || views < yt.minViews) continue;
+      found.push({
+        title, url: `https://www.youtube.com/watch?v=${v.id}`,
+        comments: Number(v.statistics?.commentCount || 0), recommends: 0, views, // likes are not used, so videos don't crowd the 추천 ranking
+        date: v.snippet.publishedAt, ts: Date.parse(v.snippet.publishedAt),
+        site: 'youtube', source: yt.name, keyword: kw, author: channel,
+      });
+    }
+  }
+  return { seen: list.length, posts: found };
+}
+
+const ytKey = config.youtube ? youtubeKey() : '';
+
 const now = new Date(Date.now() + 9 * 3600e3);
 const nowKst = { y: now.getUTCFullYear(), m: now.getUTCMonth() + 1, d: now.getUTCDate() };
 const pages = Math.max(1, Math.min(10, config.pages || 3));
@@ -243,6 +301,41 @@ for (const cat of config.categories) {
     report.push({ source: src.name, site: src.site, url: src.url, seen, kept, error });
     console.log(`[collect] ${cat.name} / ${src.name}: ${seen}개 확인, ${kept}개 모음${error ? ` (오류: ${error})` : ''}`);
   }
+
+  if (config.youtube) {
+    const yt = { name: '유튜브', minViews: 1000, days: 14, everyHours: 3, ...config.youtube };
+    const prevRep = prevCat?.sources?.find((s) => s.site === 'youtube');
+    const prevPosts = (prevCat?.posts || []).filter((p) => p.site === 'youtube');
+    const rule = `조회수 ${yt.minViews.toLocaleString('ko-KR')}회 이상 · 최근 ${yt.days}일`;
+    const base = { source: yt.name, site: 'youtube', url: 'https://www.youtube.com/', seen: 0, kept: 0, error: null, rule };
+    const keepPrev = () => { for (const p of prevPosts) if (!posts.has(p.url)) posts.set(p.url, p); };
+    const fresh = prevRep?.fetched && Date.now() - Date.parse(prevRep.fetched) < yt.everyHours * 3600e3;
+    let rep;
+    let note;
+    if (!ytKey) {
+      keepPrev();
+      rep = prevRep ? { ...prevRep, rule } : { ...base, skipped: true };
+      note = prevRep ? `이 PC에는 API 키가 없어 지난번 ${prevPosts.length}개를 유지` : 'API 키가 없어 건너뜀';
+    } else if (fresh) {
+      keepPrev();
+      rep = { ...prevRep, rule };
+      note = `${yt.everyHours}시간이 안 지나 지난번 ${prevPosts.length}개를 유지`;
+    } else {
+      try {
+        const got = await collectYoutube(cat, yt, ytKey);
+        for (const p of got.posts) posts.set(p.url, p);
+        rep = { ...base, seen: got.seen, kept: got.posts.length, fetched: new Date().toISOString() };
+        note = `${got.seen}개 확인, ${got.posts.length}개 모음`;
+      } catch (e) {
+        keepPrev();
+        rep = { ...(prevRep || base), rule, error: e.message };
+        note = `오류: ${e.message}`;
+      }
+    }
+    report.push(rep);
+    console.log(`[collect] ${cat.name} / ${yt.name}: ${note}`);
+  }
+
   result.categories.push({
     id: cat.id, name: cat.name, color: cat.color, keywords: cat.keywords,
     minRecommend: cat.minRecommend, minComments: cat.minComments,

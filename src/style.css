@@ -180,6 +180,7 @@ input::placeholder { color: var(--faint); }
 .rule li { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
 .rule li a { font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 .rule li span { color: var(--muted); text-align: right; }
+.rule li small { display: block; font-size: 11.5px; color: var(--faint); }
 .rule li em { font-style: normal; color: #C4302B; font-weight: 700; }
 .rule + .hint { margin-top: 12px; }
 
