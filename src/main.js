@@ -27,6 +27,23 @@ const SITES = {
 };
 const siteOf = (p) => SITES[p.site] || { short: '글', color: '#818480' };
 
+// Team colours: each big category is painted in its team's colours wherever it appears.
+// main/deep = background, ink = text on that background, accent = thin lines and highlights.
+const TEAMS = {
+  kiwoom: { main: '#820024', deep: '#4A0015', ink: '#FFFFFF', accent: '#E8B4C0', mono: '키움' },
+  dplus: { main: '#0B0B0C', deep: '#12302B', ink: '#2EE6C5', accent: '#2EE6C5', mono: 'DK' },
+};
+const NO_TEAM = { main: '#495464', deep: '#2B2F38', ink: '#FFFFFF', accent: '#C3C3C3', mono: '' };
+function teamOf(catId) {
+  if (TEAMS[catId]) return TEAMS[catId];
+  const c = (collected.categories || []).find((x) => x.id === catId);
+  return c ? { ...NO_TEAM, main: c.color || NO_TEAM.main, mono: c.name.slice(0, 2) } : NO_TEAM;
+}
+const teamVars = (catId) => {
+  const t = teamOf(catId);
+  return `--team:${t.main};--team-deep:${t.deep};--team-ink:${t.ink};--team-accent:${t.accent}`;
+};
+
 function timeAgo(ts) {
   if (!ts) return '';
   const mins = Math.max(1, Math.round((Date.now() - ts) / 60000));
@@ -63,8 +80,8 @@ function highlight(title) {
 
 /* ---------------- rows ---------------- */
 function thumbStyle(p) {
-  const c = siteOf(p).color;
-  return `background-image:linear-gradient(135deg, ${c} 0%, ${c}cc 45%, #2b2f38 100%)`;
+  const t = teamOf(p.cat);
+  return `background-image:linear-gradient(135deg, ${t.main} 0%, ${t.deep} 100%);box-shadow:inset 3px 0 0 ${t.accent}`;
 }
 
 function issueRow(p, opts = {}) {
@@ -74,7 +91,7 @@ function issueRow(p, opts = {}) {
   const badge = opts.count ? `<span>${opts.count}</span>` : '';
   const href = p.real ? `href="${esc(p.url)}" target="_blank" rel="noopener"` : 'href="#"';
   return `<a class="article t${read}" ${href} data-id="${p.id}">
-    <div class="thumb" style="${thumbStyle(p)}"><em class="site_tag">${siteOf(p).short}</em>${badge}</div>
+    <div class="thumb" style="${thumbStyle(p)}"><em class="site_tag" style="color:${teamOf(p.cat).ink}">${siteOf(p).short}</em>${badge}</div>
     <span class="title">${star}${highlight(p.title)}<span class="btmlayer"><span class="byte"><u>${esc(p.source || '')}</u></span><span class="hit"><u>${fmt(p.views)}</u></span><span class="good"><u><i class="f_aicon navit"></i>${fmt(p.comments)}</u></span><span class="good"><u><i class="f_aicon good"></i>${fmt(p.recommends)}</u></span><span class="time right"><u><i class="f_aicon clock"></i>${timeAgo(p.ts) || esc(p.date || '')}</u></span></span></span>
   </a>`;
 }
@@ -85,11 +102,11 @@ function rankRow(p, i, key) {
   const star = s.scraps.includes(p.id) ? '<span class="star">★</span>' : '';
   const href = p.real ? `href="${esc(p.url)}" target="_blank" rel="noopener"` : 'href="#"';
   return `<a class="article${read}" ${href} data-id="${p.id}" title="${esc(p.source || '')}">
-    <span class="lo rank" style="background-color:${siteOf(p).color}">${i + 1}</span><span class="lpadding title">${star}${highlight(p.title)}</span><span class="roverlay"><span class="cnt">${fmt(p[key])}</span></span>
+    <span class="lo rank" style="background-color:${teamOf(p.cat).main};color:${teamOf(p.cat).ink}">${i + 1}</span><span class="lpadding title">${star}${highlight(p.title)}</span><span class="roverlay"><span class="cnt">${fmt(p[key])}</span></span>
   </a>`;
 }
 
-function listBlock({ id, title, rows, cls = '', noRead = true, more = '', tip = '', extra = '' }) {
+function listBlock({ id, title, rows, cls = '', noRead = true, more = '', tip = '', extra = '', team = '' }) {
   const s = store.get();
   const unreadOn = s.unreadOnly[id] ? ' on' : '';
   const btns = [
@@ -97,7 +114,7 @@ function listBlock({ id, title, rows, cls = '', noRead = true, more = '', tip = 
     noRead ? `<button class="no_read${unreadOn}" data-list="${id}">안읽은글</button>` : '',
     more ? `<a class="more" href="${more}">더 보기</a>` : '',
   ].join('');
-  return `<div class="aalist ${cls}" data-list="${id}">
+  return `<div class="aalist ${cls}${team ? ' teamed' : ''}" data-list="${id}"${team ? ` style="${teamVars(team)}"` : ''}>
     <div class="class_title">${esc(title)}<div class="right">${btns}</div></div>
     ${extra}<div class="list">${rows || '<div class="empty">아직 모인 글이 없습니다.<br>다음에 다시 만들 때(빌드) 새로 모읍니다.</div>'}</div>
   </div>`;
@@ -184,7 +201,7 @@ function bottomCards() {
   ];
   let cards;
   if (mine.length) {
-    cards = mine.slice(0, 4).map((m) => ({ ...m, badge: '담음', ctg: '', count: 1, colors: ['#4C2E88'] }));
+    cards = mine.slice(0, 4).map((m) => ({ ...m, badge: '담음', ctg: '', count: 1, colors: ['#820024'] }));
   } else {
     const srcs = CATS.flatMap((c) => c.sources.map((src) => ({ ...src, cat: c }))).sort((a, b) => b.kept - a.kept).slice(0, 4);
     cards = srcs.map((src) => {
@@ -193,7 +210,7 @@ function bottomCards() {
         kind: 'source', title: src.source, url: src.url, ctg: src.cat.name, badge: '출처',
         sub: new URL(src.url).hostname,
         lines: [`${fmt(src.seen)}개 확인 · ${fmt(src.kept)}개 모음${src.error ? (src.kept ? ' · 일부만 읽음' : ' · 이번엔 못 읽음') : ''}`, posts[0] ? `최근: ${posts[0].title}` : '조건에 맞는 글이 아직 없어요'],
-        count: Math.min(3, Math.max(1, posts.length)), colors: [SITES[src.site]?.color || '#888', src.cat.color, '#495464'],
+        count: Math.min(3, Math.max(1, posts.length)), colors: [teamOf(src.cat.id).main, teamOf(src.cat.id).deep, teamOf(src.cat.id).main],
       };
     });
   }
@@ -251,15 +268,15 @@ function homePage() {
   const rules = (c) => `${c.name} 관련 글 중 추천 ${c.minRecommend}개 이상 또는 댓글 ${c.minComments}개 이상인 글만 모읍니다. 키워드: ${c.keywords.join(', ')}`;
 
   const top = `<div class="clear flow">
-    ${listBlock({ id: `new_${a.id}`, title: `${a.name} 새 글 모음`, rows: latest(a), cls: 'fl', more: `${R}issue/?cat=${a.id}` })}
-    ${listBlock({ id: `new_${b.id}`, title: `${b.name} 새 글 모음`, rows: latest(b), cls: 'fl ml8' })}
-    ${listBlock({ id: `hot_${a.id}`, title: `${a.name} 인기 글 모음`, rows: hot(a), cls: 'fl' })}
-    ${listBlock({ id: `hot_${b.id}`, title: `${b.name} 인기 글 ♥ 모음`, rows: hot(b), cls: 'fl ml8', tip: rules(b), more: `${R}issue/?cat=${b.id}&sort=hot` })}
+    ${listBlock({ id: `new_${a.id}`, title: `${a.name} 새 글 모음`, rows: latest(a), cls: 'fl', team: a.id, more: `${R}issue/?cat=${a.id}` })}
+    ${listBlock({ id: `new_${b.id}`, title: `${b.name} 새 글 모음`, rows: latest(b), cls: 'fl ml8', team: b.id })}
+    ${listBlock({ id: `hot_${a.id}`, title: `${a.name} 인기 글 모음`, rows: hot(a), cls: 'fl', team: a.id })}
+    ${listBlock({ id: `hot_${b.id}`, title: `${b.name} 인기 글 ♥ 모음`, rows: hot(b), cls: 'fl ml8', team: b.id, tip: rules(b), more: `${R}issue/?cat=${b.id}&sort=hot` })}
   </div>`;
 
-  const mid = `<div class="la mid naver big bg"><div class="ad_card">${CATS.slice(0, 2).map((c) => `<div class="adrow pic">
+  const mid = `<div class="la mid naver big bg"><div class="ad_card">${CATS.slice(0, 2).map((c) => `<div class="adrow pic teamcard" style="${teamVars(c.id)}">
       <span class="ad_alert">모음</span>
-      <a class="thumb" href="${R}issue/?cat=${c.id}" style="background-image:linear-gradient(135deg, ${c.color}, #2b2f38)" aria-label="${esc(c.name)} 모아보기"></a>
+      <a class="thumb mono" href="${R}issue/?cat=${c.id}" aria-label="${esc(c.name)} 모아보기">${esc(teamOf(c.id).mono)}</a>
       <a class="title" href="${R}issue/?cat=${c.id}">${esc(c.name)} 모아보기 · ${fmt(c.posts.length)}개</a>
       <a class="url" href="${R}issue/?cat=${c.id}">키워드: ${esc(c.keywords.join(' · '))}</a>
       <p class="desc">추천 ${c.minRecommend}+ 또는 댓글 ${c.minComments}+ · ${esc(c.sources.map((x) => x.source).join(', '))}</p>
@@ -303,7 +320,7 @@ function issuePage() {
     <div class="page_tools"><a class="${!src ? 'on' : ''}" href="${R}issue/?cat=${cat?.id}&sort=${sort}">전체 출처</a>${(cat?.sources || []).map((x) => `<a class="${src === x.source ? 'on' : ''}" href="${R}issue/?cat=${cat.id}&sort=${sort}&src=${encodeURIComponent(x.source)}"><i class="sw" style="background:${SITES[x.site]?.color}"></i>${esc(x.source)} ${x.kept}</a>`).join('')}</div>`;
   const rows = posts.slice(0, limit).map((p) => issueRow(p, sort === 'new' ? {} : { count: p.comments })).join('');
   const more = posts.length > limit ? `<div class="more_btn"><button data-more="${limit + 40}">더 보기 (${posts.length - limit}개 남음)</button></div>` : '';
-  return frame(listBlock({ id: 'issue_all', title: `${cat?.name || ''} 모아보기 · ${posts.length}개`, rows, extra: tools, tip: cat ? `키워드: ${cat.keywords.join(', ')} / 추천 ${cat.minRecommend}+ 또는 댓글 ${cat.minComments}+` : '' }) + more);
+  return frame(listBlock({ id: 'issue_all', title: `${cat?.name || ''} 모아보기 · ${posts.length}개`, rows, extra: tools, team: cat?.id || '', tip: cat ? `키워드: ${cat.keywords.join(', ')} / 추천 ${cat.minRecommend}+ 또는 댓글 ${cat.minComments}+` : '' }) + more);
 }
 
 function mirrorPage() {
@@ -401,7 +418,7 @@ function openPost(id) {
 
 function showRules() {
   modal(`<div class="head">모으는 기준 (큰 카테고리)</div>
-    ${CATS.map((c) => `<div class="meta"><span class="tag" style="background:${c.color}">${esc(c.name)}</span>키워드 ${esc(c.keywords.join(', '))} · 추천 ${c.minRecommend}개 이상 또는 댓글 ${c.minComments}개 이상</div>
+    ${CATS.map((c) => `<div class="meta"><span class="tag" style="background:${teamOf(c.id).main};color:${teamOf(c.id).ink}">${esc(c.name)}</span>키워드 ${esc(c.keywords.join(', '))} · 추천 ${c.minRecommend}개 이상 또는 댓글 ${c.minComments}개 이상</div>
     <div class="body">${c.sources.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.source)}</a> — ${x.seen}개 확인, ${x.kept}개 모음${x.error ? ` <b style="color:#c00">(읽기 실패: ${esc(x.error)})</b>` : ''}`).join('<br>')}</div>`).join('')}
     <div class="body" style="font-size:9pt;color:#888">팀 전용 게시판(디시 갤러리, 엠팍 키움 말머리)은 모든 글을 관련 글로 보고, 에펨코리아는 제목에 키워드가 있는 글만 모읍니다. 마지막으로 모은 시각: ${esc(updatedAgo)}. 기준이나 게시판을 바꾸고 싶으면 말씀해 주세요.</div>`);
 }
@@ -565,7 +582,10 @@ function drawCloud() {
   box.appendChild(cv);
   const ctx = cv.getContext('2d');
   ctx.scale(dpr, dpr);
-  const palette = ['#c23531', '#2f4554', '#61a0a8', '#d48265', '#749f83', '#ca8622', '#bda29a', '#6e7074', '#546570', '#8a4fa3', '#3b6db3', '#b8457a'];
+  // Team colours: burgundy shades, black/grey and mint shades (lighter set on the black theme).
+  const palette = document.body.classList.contains('black')
+    ? ['#E06A86', '#C2405E', '#F0A8B8', '#E6E6E6', '#9AA0A6', '#2EE6C5', '#14BFA3', '#8FF2E0', '#B8457A', '#7A7F86']
+    : ['#820024', '#A8324E', '#5C0019', '#0B0B0C', '#3A3D42', '#0F9E88', '#14BFA3', '#0A7A69', '#B8457A', '#6E7074'];
   const max = words[0]?.[1] || 1;
   const placed = [];
   cloudBoxes = [];
