@@ -141,7 +141,7 @@ async function get(url, tries = 2) {
     signal: AbortSignal.timeout(15000),
   });
   if ((r.status === 429 || r.status === 430) && tries > 1) {
-    await sleep(20000); // the board asked us to slow down
+    await sleep(45000); // the board asked us to slow down
     return get(url, tries - 1);
   }
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -178,7 +178,7 @@ for (const cat of config.categories) {
   const report = [];
   for (const src of cat.sources) {
     let seen = 0; let kept = 0; let error = null;
-    const gap = src.site === 'fmkorea' ? 9000 : 600;
+    const gap = src.site === 'fmkorea' ? 15000 : 600;
     let fails = 0;
     for (const url of urlsFor(src, cat)) {
       try {
