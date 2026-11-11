@@ -2,7 +2,7 @@
 const KEY = 'moa.v1';
 
 const DEFAULTS = {
-  keywords: ['AI', '고양이', '여행'],
+  keywords: [],
   scraps: [], // post ids
   links: [], // { id, title, url, note, added }
   read: [], // post ids
