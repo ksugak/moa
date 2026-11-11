@@ -180,13 +180,18 @@ async function get(url, tries = 2) {
   return r.text();
 }
 
+// The category's keywords, minus any this board is told to skip (skipKeywords) because a short
+// word such as "혀" matches unrelated posts on a general board.
+const keywordsFor = (src, cat) => cat.keywords.filter((k) => !(src.skipKeywords || []).includes(k));
+
 // Which pages to read for one board: its first pages, plus (when `search` is on)
 // the board's own title search for each keyword, so older related posts are found too.
 function urlsFor(src, cat) {
   const list = [];
   if (src.search && SEARCH[src.site]) {
     // A search for "딮" already finds "딮기", so skip keywords another keyword covers.
-    const terms = cat.keywords.filter((k) => !cat.keywords.some((o) => o !== k && k.includes(o)));
+    const words = keywordsFor(src, cat);
+    const terms = words.filter((k) => !words.some((o) => o !== k && k.includes(o)));
     for (const k of terms) {
       const u = new URL(src.url);
       SEARCH[src.site](u, k);
@@ -218,7 +223,7 @@ for (const cat of config.categories) {
         seen += rows.length;
         for (const row of rows) {
           if (!row.title) continue;
-          const kw = cat.keywords.find((k) => row.title.includes(k)) || null;
+          const kw = keywordsFor(src, cat).find((k) => row.title.includes(k)) || null;
           if (src.requireKeyword && !kw) continue;
           if (row.recommends < cat.minRecommend && row.comments < cat.minComments) continue;
           if (posts.has(row.url)) continue;
