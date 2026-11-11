@@ -1,5 +1,5 @@
 {
-  "_help": "큰 카테고리 설정. keywords: 관련 글로 볼 단어(제목에 들어 있으면 관련 글). minRecommend/minComments: 둘 중 하나만 넘으면 모읍니다. requireKeyword=false 인 곳은 팀 전용 게시판이라 모든 글을 관련 글로 봅니다.",
+  "_help": "큰 카테고리 설정. keywords: 관련 글로 볼 단어(제목에 들어 있으면 관련 글). minRecommend/minComments: 둘 중 하나만 넘으면 모읍니다. requireKeyword=false 인 곳은 팀 전용 게시판이라 모든 글을 관련 글로 봅니다. search=true 인 곳은 글이 많은 종합 게시판이라 키워드로 제목 검색을 해서 찾습니다.",
   "pages": 3,
   "categories": [
     {
@@ -10,7 +10,9 @@
       "minRecommend": 3,
       "minComments": 3,
       "sources": [
-        { "site": "dcinside", "name": "디시 디플러스기아 갤", "url": "https://gall.dcinside.com/mgallery/board/lists/?id=dwg", "requireKeyword": false }
+        { "site": "dcinside", "name": "디시 디플러스기아 갤", "url": "https://gall.dcinside.com/mgallery/board/lists/?id=dwg", "requireKeyword": false },
+        { "site": "dcinside", "name": "디시 롤 갤", "url": "https://gall.dcinside.com/board/lists/?id=leagueoflegends6", "requireKeyword": true, "search": true, "pages": 1 },
+        { "site": "inven", "name": "인벤 LoL e스포츠", "url": "https://www.inven.co.kr/board/lol/4625", "requireKeyword": true, "search": true, "pages": 1 }
       ]
     },
     {
@@ -22,6 +24,7 @@
       "minComments": 3,
       "sources": [
         { "site": "dcinside", "name": "디시 키움 갤", "url": "https://gall.dcinside.com/board/lists/?id=sh_new", "requireKeyword": false },
+        { "site": "dcinside", "name": "디시 국내야구 갤", "url": "https://gall.dcinside.com/board/lists/?id=baseball_new13", "requireKeyword": true, "search": true, "pages": 1 },
         { "site": "mlbpark", "name": "엠팍 키움 말머리", "url": "https://mlbpark.donga.com/mp/b.php?search_select=sct&search_input=&select=spf&m=search&b=kbotown&query=%ED%82%A4%EC%9B%80", "requireKeyword": false }
       ]
     }

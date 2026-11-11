@@ -31,7 +31,7 @@ function ago(ts) {
   return `${Math.floor(mins / 1440)}일 전`;
 }
 
-const SITES = { dcinside: '디시', fmkorea: '에펨', mlbpark: '엠팍' };
+const SITE_NAMES = { dcinside: '디시', fmkorea: '에펨', mlbpark: '엠팍', inven: '인벤' };
 
 // Team colours live in style.css (.t-kiwoom / .t-dplus and body.team-…). Other categories get a neutral look.
 const TEAM_SHORT = { kiwoom: '키움', dplus: 'DK' };
@@ -53,6 +53,8 @@ const sorted = (list, key) => list.slice().sort((a, b) => {
   return (b[key] || 0) - (a[key] || 0);
 });
 const updatedAgo = collected.updated ? ago(Date.parse(collected.updated)) : '';
+// Only the sites that actually have collected posts get a filter button.
+const SITES = Object.fromEntries(Object.entries(SITE_NAMES).filter(([id]) => ALL.some((p) => p.site === id)));
 
 /* ---------------- what the address asks for ---------------- */
 const params = new URLSearchParams(location.search);

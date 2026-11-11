@@ -36,7 +36,7 @@ const cell = (row, cls) => {
   return m ? m[1] : '';
 };
 
-// Korean time: "YYYY-MM-DD HH:MM:SS", "HH:MM", "HH:MM:SS", "MM.DD", "YY.MM.DD", "YYYY-MM-DD"
+// Korean time: "YYYY-MM-DD HH:MM:SS", "HH:MM", "HH:MM:SS", "MM.DD", "MM-DD", "YY.MM.DD", "YYYY-MM-DD"
 function toTs(s, nowKst) {
   s = text(s);
   let m;
@@ -48,7 +48,7 @@ function toTs(s, nowKst) {
     return t;
   }
   if ((m = s.match(/^(\d{2})[./](\d{2})[./](\d{2})$/))) return mk(2000 + +m[1], +m[2], +m[3]);
-  if ((m = s.match(/^(\d{2})\.(\d{2})$/))) {
+  if ((m = s.match(/^(\d{2})[.-](\d{2})$/))) {
     let t = mk(nowKst.y, +m[1], +m[2]);
     if (t > Date.now()) t = mk(nowKst.y - 1, +m[1], +m[2]);
     return t;
@@ -66,9 +66,13 @@ function parseDc(html, base) {
     const a = tit.match(/<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
     if (!a || a[1].startsWith('javascript')) continue;
     const date = row.match(/class="gall_date"[^>]*title="([^"]+)"/);
+    // A post found through search carries the search words in its address; drop them so the
+    // same post found on the plain list is not collected twice.
+    const link = new URL(a[1].replace(/&amp;/g, '&'), base);
+    for (const k of ['s_type', 's_keyword', 'search_pos']) link.searchParams.delete(k);
     out.push({
       title: text(a[2]),
-      url: new URL(a[1].replace(/&amp;/g, '&'), base).href,
+      url: link.href,
       comments: num((tit.match(/class="reply_num">([^<]*)</) || [])[1] || '0'),
       recommends: num(cell(row, 'gall_recommend')),
       views: num(cell(row, 'gall_count')),
@@ -117,7 +121,35 @@ function parseMlb(html, base) {
   return out;
 }
 
-const PARSERS = { dcinside: parseDc, fmkorea: parseFm, mlbpark: parseMlb };
+function parseInven(html, base) {
+  const out = [];
+  const tbody = html.slice(html.indexOf('<tbody'));
+  for (const row of tbody.match(/<tr[^>]*>[\s\S]*?<\/tr>/g) || []) {
+    if (/<tr[^>]*class="[^"]*notice/.test(row)) continue;
+    const a = row.match(/<a class="subject-link" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
+    if (!a) continue;
+    const link = new URL(a[1].replace(/&amp;/g, '&'), base);
+    link.search = ''; // search results add the search words to the address
+    out.push({
+      title: text(a[2].replace(/<span class="category">[\s\S]*?<\/span>/, '')), // drop the "[일반]" label
+      url: link.href,
+      comments: num((row.match(/class="con-comment">([^<]*)</) || [])[1] || '0'),
+      recommends: num(cell(row, 'reco')),
+      views: num(cell(row, 'view')),
+      date: text(cell(row, 'date')),
+    });
+  }
+  return out;
+}
+
+const PARSERS = { dcinside: parseDc, fmkorea: parseFm, mlbpark: parseMlb, inven: parseInven };
+
+// How each site spells "search post titles for this word" in a board address.
+const SEARCH = {
+  fmkorea: (u, k) => { u.searchParams.set('search_target', 'title'); u.searchParams.set('search_keyword', k); },
+  dcinside: (u, k) => { u.searchParams.set('s_type', 'search_subject'); u.searchParams.set('s_keyword', k); },
+  inven: (u, k) => { u.searchParams.set('name', 'subject'); u.searchParams.set('keyword', k); },
+};
 
 function pageUrl(src, page) {
   if (page === 1) return src.url;
@@ -152,13 +184,12 @@ async function get(url, tries = 2) {
 // the board's own title search for each keyword, so older related posts are found too.
 function urlsFor(src, cat) {
   const list = [];
-  if (src.search && src.site === 'fmkorea') {
+  if (src.search && SEARCH[src.site]) {
     // A search for "딮" already finds "딮기", so skip keywords another keyword covers.
     const terms = cat.keywords.filter((k) => !cat.keywords.some((o) => o !== k && k.includes(o)));
     for (const k of terms) {
       const u = new URL(src.url);
-      u.searchParams.set('search_target', 'title');
-      u.searchParams.set('search_keyword', k);
+      SEARCH[src.site](u, k);
       list.push(u.href);
     }
   }
@@ -178,7 +209,7 @@ for (const cat of config.categories) {
   const report = [];
   for (const src of cat.sources) {
     let seen = 0; let kept = 0; let error = null;
-    const gap = src.site === 'fmkorea' ? 15000 : 600;
+    const gap = src.site === 'fmkorea' ? 15000 : src.site === 'inven' ? 1200 : 600;
     let fails = 0;
     for (const url of urlsFor(src, cat)) {
       try {
