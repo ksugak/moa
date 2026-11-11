@@ -10,8 +10,7 @@
       "minRecommend": 3,
       "minComments": 3,
       "sources": [
-        { "site": "dcinside", "name": "디시 디플러스기아 갤", "url": "https://gall.dcinside.com/mgallery/board/lists/?id=dwg", "requireKeyword": false },
-        { "site": "fmkorea", "name": "에펨 LoL", "url": "https://www.fmkorea.com/index.php?mid=lol", "requireKeyword": true, "search": true, "pages": 1 }
+        { "site": "dcinside", "name": "디시 디플러스기아 갤", "url": "https://gall.dcinside.com/mgallery/board/lists/?id=dwg", "requireKeyword": false }
       ]
     },
     {
@@ -23,7 +22,6 @@
       "minComments": 3,
       "sources": [
         { "site": "dcinside", "name": "디시 키움 갤", "url": "https://gall.dcinside.com/board/lists/?id=sh_new", "requireKeyword": false },
-        { "site": "fmkorea", "name": "에펨 야구", "url": "https://www.fmkorea.com/index.php?mid=baseball", "requireKeyword": true, "search": true, "pages": 1 },
         { "site": "mlbpark", "name": "엠팍 키움 말머리", "url": "https://mlbpark.donga.com/mp/b.php?search_select=sct&search_input=&select=spf&m=search&b=kbotown&query=%ED%82%A4%EC%9B%80", "requireKeyword": false }
       ]
     }
