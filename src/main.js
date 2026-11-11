@@ -96,7 +96,7 @@ function postRow(p, o = {}) {
     `<span>조회 <b>${fmt(p.views)}</b></span>`,
   ].join('');
   const value = o.value ? `<span class="val">${fmt(p[o.value])}<small>${RANKS.find(([k]) => k === o.value)[1]}</small></span>` : '';
-  return `<a class="post ${tcls(p.cat)}${read}" href="${esc(p.url)}" target="_blank" rel="noopener" data-id="${p.id}">
+  return `<a class="post ${tcls(p.cat)}${read}" href="${esc(p.url)}" rel="noopener" data-id="${p.id}">
     ${lead}
     <span class="post-body">
       <span class="post-title">${highlight(p.title)}</span>
@@ -252,7 +252,7 @@ function myPage() {
   const scraps = s.scraps.map((id) => CP[id]).filter(Boolean);
   const reads = s.read.map((id) => CP[id]).filter(Boolean).slice(0, 30);
   const hits = ALL.filter((p) => matchKeyword(p.title));
-  const links = s.links.map((l) => `<a class="post t-etc" href="${esc(l.url)}" target="_blank" rel="noopener">
+  const links = s.links.map((l) => `<a class="post t-etc" href="${esc(l.url)}" rel="noopener">
       <span class="bar"></span>
       <span class="post-body"><span class="post-title">${esc(l.title)}</span><span class="post-meta"><span>${esc(new URL(l.url).hostname)}</span><span>${ago(l.added)} 담음</span></span></span>
       <button class="del" data-rmlink="${l.id}">삭제</button>
@@ -322,7 +322,7 @@ document.addEventListener('click', (e) => {
   const rml = t.closest('[data-rmlink]');
   if (rml) { e.preventDefault(); store.removeLink(rml.dataset.rmlink); render(); return; }
   const post = t.closest('.post[data-id]');
-  if (post) { store.markRead(post.dataset.id); setTimeout(render, 50); return; } // the link itself opens in a new tab
+  if (post) { store.markRead(post.dataset.id); return; } // the link itself opens the post in this tab
   const rm = t.closest('[data-rmkw]');
   if (rm) { store.removeKeyword(rm.dataset.rmkw); render(); return; }
   const word = t.closest('[data-word]');
@@ -353,6 +353,9 @@ document.addEventListener('submit', (e) => {
   toast('내 모음에 담았어요');
   render();
 });
+
+// Coming back from a post with the back button: show it as read, at the same scroll position.
+window.addEventListener('pageshow', (e) => { if (e.persisted) render(); });
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') $$('.modal-bg').forEach((m) => m.remove());
