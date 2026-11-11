@@ -2,3 +2,4 @@ node_modules/
 dist/
 _evidence_capture/
 .claude/
+minipc-collect.log
