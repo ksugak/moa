@@ -253,6 +253,12 @@ async function collectYoutube(cat, yt, key) {
       // Korean videos only: the uploader's language says Korean, or (none given) the title is in Hangul.
       const lang = v.snippet?.defaultAudioLanguage || v.snippet?.defaultLanguage || '';
       if (lang ? !lang.toLowerCase().startsWith('ko') : !HANGUL.test(title)) continue;
+      // A category can narrow its videos: drop any that mention an `exclude` word, and
+      // (when `context` is set) keep only those that mention one of the context words.
+      const all = `${hay} ${(v.snippet?.tags || []).join(' ')} ${v.snippet?.description || ''}`.toLowerCase();
+      const has = (w) => all.includes(w.toLowerCase());
+      if ((yt.exclude || []).some(has)) continue;
+      if (yt.context?.length && !yt.context.some(has)) continue;
       found.push({
         title, url: `https://www.youtube.com/watch?v=${v.id}`,
         comments: Number(v.statistics?.commentCount || 0), recommends: 0, views, // likes are not used, so videos don't crowd the 추천 ranking
@@ -308,13 +314,15 @@ for (const cat of config.categories) {
   }
 
   if (config.youtube) {
-    const yt = { name: '유튜브', minViews: 1000, days: 14, everyHours: 3, ...config.youtube };
+    const yt = { name: '유튜브', minViews: 1000, days: 14, everyHours: 3, ...config.youtube, ...cat.youtube };
+    yt.skipKeywords = [...(config.youtube.skipKeywords || []), ...(cat.youtube?.skipKeywords || [])];
+    const filter = JSON.stringify([yt.skipKeywords, yt.context || [], yt.exclude || []]); // search again at once when these change
     const prevRep = prevCat?.sources?.find((s) => s.site === 'youtube');
     const prevPosts = (prevCat?.posts || []).filter((p) => p.site === 'youtube' && HANGUL.test(p.title || ''));
     const rule = `조회수 ${yt.minViews.toLocaleString('ko-KR')}회 이상 · 최근 ${yt.days}일`;
     const base = { source: yt.name, site: 'youtube', url: 'https://www.youtube.com/', seen: 0, kept: 0, error: null, rule };
     const keepPrev = () => { for (const p of prevPosts) if (!posts.has(p.url)) posts.set(p.url, p); };
-    const fresh = prevRep?.fetched && Date.now() - Date.parse(prevRep.fetched) < yt.everyHours * 3600e3;
+    const fresh = prevRep?.fetched && prevRep.filter === filter && Date.now() - Date.parse(prevRep.fetched) < yt.everyHours * 3600e3;
     let rep;
     let note;
     if (!ytKey) {
@@ -329,7 +337,7 @@ for (const cat of config.categories) {
       try {
         const got = await collectYoutube(cat, yt, ytKey);
         for (const p of got.posts) posts.set(p.url, p);
-        rep = { ...base, seen: got.seen, kept: got.posts.length, fetched: new Date().toISOString() };
+        rep = { ...base, seen: got.seen, kept: got.posts.length, fetched: new Date().toISOString(), filter };
         note = `${got.seen}개 확인, ${got.posts.length}개 모음`;
       } catch (e) {
         keepPrev();
