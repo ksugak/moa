@@ -227,6 +227,8 @@ async function ytApi(path, query, key) {
   return body;
 }
 
+const HANGUL = /[가-힣]/;
+
 async function collectYoutube(cat, yt, key) {
   const words = cat.keywords.filter((k) => !(yt.skipKeywords || []).includes(k));
   const terms = words.filter((k) => !words.some((o) => o !== k && k.includes(o)));
@@ -248,6 +250,9 @@ async function collectYoutube(cat, yt, key) {
       const kw = words.find((k) => hay.includes(k.toLowerCase())) || null;
       const views = Number(v.statistics?.viewCount || 0);
       if (!kw || views < yt.minViews) continue;
+      // Korean videos only: the uploader's language says Korean, or (none given) the title is in Hangul.
+      const lang = v.snippet?.defaultAudioLanguage || v.snippet?.defaultLanguage || '';
+      if (lang ? !lang.toLowerCase().startsWith('ko') : !HANGUL.test(title)) continue;
       found.push({
         title, url: `https://www.youtube.com/watch?v=${v.id}`,
         comments: Number(v.statistics?.commentCount || 0), recommends: 0, views, // likes are not used, so videos don't crowd the 추천 ranking
@@ -305,7 +310,7 @@ for (const cat of config.categories) {
   if (config.youtube) {
     const yt = { name: '유튜브', minViews: 1000, days: 14, everyHours: 3, ...config.youtube };
     const prevRep = prevCat?.sources?.find((s) => s.site === 'youtube');
-    const prevPosts = (prevCat?.posts || []).filter((p) => p.site === 'youtube');
+    const prevPosts = (prevCat?.posts || []).filter((p) => p.site === 'youtube' && HANGUL.test(p.title || ''));
     const rule = `조회수 ${yt.minViews.toLocaleString('ko-KR')}회 이상 · 최근 ${yt.days}일`;
     const base = { source: yt.name, site: 'youtube', url: 'https://www.youtube.com/', seen: 0, kept: 0, error: null, rule };
     const keepPrev = () => { for (const p of prevPosts) if (!posts.has(p.url)) posts.set(p.url, p); };
