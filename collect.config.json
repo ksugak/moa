@@ -22,8 +22,8 @@
       "name": "키움히어로즈",
       "color": "#820024",
       "keywords": ["키움", "키움히어로즈", "큠", "혀", "히어로즈"],
-      "minRecommend": 3,
-      "minComments": 3,
+      "minRecommend": 5,
+      "minComments": 5,
       "youtube": {
         "skipKeywords": ["혀"],
         "context": ["키움히어로즈", "키움 히어로즈", "야구", "KBO", "크보", "고척", "baseball"],
