@@ -335,6 +335,10 @@ for (const cat of config.categories) {
   const report = [];
   for (const src of cat.sources) {
     let seen = 0; let kept = 0; let error = null;
+    // A board may set its own minRecommend/minComments; otherwise the category's are used.
+    const minRec = src.minRecommend ?? cat.minRecommend;
+    const minCom = src.minComments ?? cat.minComments;
+    const rule = minRec !== cat.minRecommend || minCom !== cat.minComments ? `추천 ${minRec}개 이상 또는 댓글 ${minCom}개 이상` : undefined;
     const gap = src.site === 'fmkorea' ? 15000 : src.site === 'inven' ? 1200 : 600;
     let fails = 0;
     const viaEgo = src.browser === 'ego';
@@ -365,7 +369,7 @@ for (const cat of config.categories) {
           if (!row.title) continue;
           const kw = keywordsFor(src, cat).find((k) => row.title.includes(k)) || null;
           if (src.requireKeyword && !kw) continue;
-          if (row.recommends < cat.minRecommend && row.comments < cat.minComments) continue;
+          if (row.recommends < minRec && row.comments < minCom) continue;
           if (posts.has(row.url)) continue;
           posts.set(row.url, { ...row, ts: toTs(row.date, nowKst), site: src.site, source: src.name, keyword: kw });
           kept++;
@@ -380,7 +384,7 @@ for (const cat of config.categories) {
     if (error && prevCat) {
       for (const old of prevCat.posts.filter((x) => x.source === src.name)) if (!posts.has(old.url)) posts.set(old.url, old);
     }
-    report.push({ source: src.name, site: src.site, url: src.url, seen, kept, error });
+    report.push({ source: src.name, site: src.site, url: src.url, seen, kept, error, rule });
     console.log(`[collect] ${cat.name} / ${src.name}: ${seen}개 확인, ${kept}개 모음${error ? ` (오류: ${error})` : ''}`);
   }
 

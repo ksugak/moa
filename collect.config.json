@@ -1,5 +1,5 @@
 {
-  "_help": "큰 카테고리 설정. keywords: 관련 글로 볼 단어(제목에 들어 있으면 관련 글). minRecommend/minComments: 둘 중 하나만 넘으면 모읍니다. requireKeyword=false 인 곳은 팀 전용 게시판이라 모든 글을 관련 글로 봅니다. search=true 인 곳은 글이 많은 종합 게시판이라 키워드로 제목 검색을 해서 찾습니다. skipKeywords 는 그 게시판에서만 쓰지 않을 키워드입니다. browser=\"ego\" 인 곳(에펨코리아)은 GitHub 서버와 일반 요청을 막아서 집 PC의 Ego Lite 브라우저로 열어 모읍니다. 다른 곳에서는 건너뛰고 지난번 글을 유지합니다.",
+  "_help": "큰 카테고리 설정. keywords: 관련 글로 볼 단어(제목에 들어 있으면 관련 글). minRecommend/minComments: 둘 중 하나만 넘으면 모읍니다. requireKeyword=false 인 곳은 팀 전용 게시판이라 모든 글을 관련 글로 봅니다. search=true 인 곳은 글이 많은 종합 게시판이라 키워드로 제목 검색을 해서 찾습니다. skipKeywords 는 그 게시판에서만 쓰지 않을 키워드입니다. 게시판에 minRecommend/minComments 를 적으면 그 게시판만 그 기준을 씁니다. browser=\"ego\" 인 곳(에펨코리아)은 GitHub 서버와 일반 요청을 막아서 집 PC의 Ego Lite 브라우저로 열어 모읍니다. 다른 곳에서는 건너뛰고 지난번 글을 유지합니다.",
   "pages": 3,
   "_help_youtube": "모든 카테고리의 키워드로 유튜브를 검색합니다. 조회수가 minViews 이상인 영상만 모읍니다. days: 최근 며칠 안에 올라온 영상만. everyHours: 몇 시간마다 새로 검색할지(API 사용량 제한 때문). skipKeywords: 유튜브 검색에서는 쓰지 않을 키워드. API 키가 있는 PC에서만 검색합니다. 카테고리 안에 youtube 를 따로 적으면 그 카테고리에만 적용됩니다. context: 제목·채널·태그·설명에 이 단어 중 하나가 있어야 모읍니다. exclude: 이 단어가 있으면 뺍니다.",
   "youtube": { "name": "유튜브", "minViews": 1000, "days": 14, "everyHours": 3, "skipKeywords": [] },
@@ -40,13 +40,13 @@
     {
       "id": "ai",
       "name": "AI 활용",
-      "color": "#3b6fd1",
+      "color": "#E8660C",
       "keywords": ["AI"],
       "minRecommend": 5,
       "minComments": 5,
       "youtube": { "skipKeywords": ["AI"] },
       "sources": [
-        { "site": "dcinside", "name": "디시 AI 활용 갤", "url": "https://gall.dcinside.com/mgallery/board/lists/?id=ai_utilize", "requireKeyword": false },
+        { "site": "dcinside", "name": "디시 AI 활용 갤", "url": "https://gall.dcinside.com/mgallery/board/lists/?id=ai_utilize", "requireKeyword": false, "minRecommend": 10, "minComments": 10 },
         { "site": "fmkorea", "name": "에펨 AI", "url": "https://www.fmkorea.com/index.php?mid=ai", "browser": "ego", "requireKeyword": false }
       ]
     }

@@ -33,8 +33,8 @@ function ago(ts) {
 
 const SITE_NAMES = { dcinside: '디시', fmkorea: '에펨', mlbpark: '엠팍', inven: '인벤', youtube: '유튜브' };
 
-// Team colours live in style.css (.t-kiwoom / .t-dplus and body.team-…). Other categories get a neutral look.
-const TEAM_SHORT = { kiwoom: '키움', dplus: 'DK' };
+// Team colours live in style.css (.t-kiwoom / .t-dplus / .t-ai and body.team-…). Other categories get a neutral look.
+const TEAM_SHORT = { kiwoom: '키움', dplus: 'DK', ai: 'AI' };
 const tcls = (catId) => (TEAM_SHORT[catId] ? `t-${catId}` : 't-etc');
 
 /* ---------------- collected posts ---------------- */
