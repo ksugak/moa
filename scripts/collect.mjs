@@ -1,9 +1,10 @@
 // Collects posts for each big category from the boards listed in collect.config.json
 // and writes src/collected.json. Runs before every build. It never fails the build:
 // if a board can't be read, the posts collected last time are kept.
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
 
 const root = resolve(import.meta.dirname, '..');
 const config = JSON.parse(readFileSync(resolve(root, 'collect.config.json'), 'utf8'));
@@ -83,6 +84,13 @@ function parseDc(html, base) {
   return out;
 }
 
+// A post found through search carries the search words in its address; use the post's short
+// address so the same post found by two searches (or on the plain list) is collected once.
+function fmLink(u) {
+  const srl = u.searchParams.get('document_srl') || (u.pathname.match(/^\/(\d+)$/) || [])[1];
+  return srl ? `https://www.fmkorea.com/${srl}` : u.href;
+}
+
 function parseFm(html, base) {
   const out = [];
   const body = html.replace(/data-fm-night-swap="[^"]*"/g, '');
@@ -94,7 +102,7 @@ function parseFm(html, base) {
     if (!a) continue;
     out.push({
       title: text(a[2]),
-      url: new URL(a[1].replace(/&amp;/g, '&'), base).href,
+      url: fmLink(new URL(a[1].replace(/&amp;/g, '&'), base)),
       comments: num((tit.match(/class="replyNum"[^>]*>([^<]*)</) || [])[1] || '0'),
       recommends: num(cell(row, 'm_no_voted')),
       views: num((row.match(/<td class="m_no">([\s\S]*?)<\/td>/) || [])[1] || '0'),
@@ -270,6 +278,50 @@ async function collectYoutube(cat, yt, key) {
   return { seen: list.length, posts: found };
 }
 
+
+/* ---------- Boards read through Ego Lite ----------
+   A board with "browser": "ego" (에펨코리아) refuses plain requests and GitHub's servers, so it is
+   read on the home PC by opening its pages in the Ego Lite browser. Elsewhere (GitHub, or a PC
+   without Ego Lite) the board is skipped and the posts collected last time are kept. */
+const EGO_EXE = resolve(homedir(), '.local/share/ego/active_version_dir/ego-browser.exe');
+function egoCommand() {
+  if (process.env.GITHUB_ACTIONS) return null;
+  if (existsSync(EGO_EXE)) return EGO_EXE;
+  const probe = spawnSync('ego-browser', ['--version'], { shell: true, encoding: 'utf8' });
+  return probe.status === 0 ? 'ego-browser' : null;
+}
+const egoExe = config.categories.some((c) => c.sources.some((s) => s.browser === 'ego')) ? egoCommand() : null;
+
+// Opens every address in one Ego Lite task space, `gap` ms apart, and returns { url: html | {error} }.
+function egoFetchAll(urls, gap) {
+  const out = resolve(tmpdir(), `moa-ego-${process.pid}-${Date.now()}.json`);
+  const script = `
+const urls = ${JSON.stringify(urls)};
+const pages = {};
+const task = await taskSpace(${JSON.stringify(`moa collect ${new Date().toISOString()}`)});
+try {
+  const page = task.page("p1");
+  for (let i = 0; i < urls.length; i++) {
+    if (i) await page.waitForTimeout(${gap});
+    try {
+      await page.goto(urls[i], { timeout: 30000 });
+      await page.waitForSelector("tbody tr", { timeout: 15000 }).catch(() => {});
+      pages[urls[i]] = await page.evaluate(() => document.documentElement.outerHTML);
+    } catch (e) { pages[urls[i]] = { error: String(e && e.message || e).slice(0, 200) }; }
+  }
+} finally {
+  const fs = await import("node:fs/promises");
+  await fs.writeFile(${JSON.stringify(out)}, JSON.stringify(pages), "utf8");
+  await task.finish({ keep: [] });
+}
+`;
+  const r = spawnSync(egoExe, ['nodejs'], { input: script, encoding: 'utf8', timeout: 10 * 60e3, shell: egoExe === 'ego-browser', windowsHide: true });
+  if (!existsSync(out)) throw new Error(`Ego Lite 실행 실패: ${(r.stderr || r.stdout || r.error?.message || '').trim().slice(0, 200)}`);
+  const pages = JSON.parse(readFileSync(out, 'utf8'));
+  try { unlinkSync(out); } catch {}
+  return pages;
+}
+
 const ytKey = config.youtube ? youtubeKey() : '';
 
 const now = new Date(Date.now() + 9 * 3600e3);
@@ -285,9 +337,28 @@ for (const cat of config.categories) {
     let seen = 0; let kept = 0; let error = null;
     const gap = src.site === 'fmkorea' ? 15000 : src.site === 'inven' ? 1200 : 600;
     let fails = 0;
+    const viaEgo = src.browser === 'ego';
+    let egoPages = null;
+    if (viaEgo && !egoExe) {
+      // Not the home PC: keep what the home PC collected last time.
+      const prevRep = prevCat?.sources?.find((x) => x.source === src.name);
+      for (const old of (prevCat?.posts || []).filter((x) => x.source === src.name)) if (!posts.has(old.url)) posts.set(old.url, old);
+      report.push(prevRep || { source: src.name, site: src.site, url: src.url, seen: 0, kept: 0, error: null, skipped: true });
+      console.log(`[collect] ${cat.name} / ${src.name}: 집 PC(Ego Lite)에서만 모아 지난번 글을 유지`);
+      continue;
+    }
+    if (viaEgo) {
+      try { egoPages = egoFetchAll(urlsFor(src, cat), gap); } catch (e) { egoPages = {}; error = e.message; fails = 2; }
+    }
     for (const url of urlsFor(src, cat)) {
+      if (fails >= 2) break;
       try {
-        const html = await get(url);
+        let html;
+        if (viaEgo) {
+          const got = egoPages[url];
+          if (got == null || typeof got !== 'string') throw new Error(got?.error || 'Ego Lite에서 페이지를 받지 못함');
+          html = got;
+        } else html = await get(url);
         const rows = PARSERS[src.site](html, src.url);
         seen += rows.length;
         for (const row of rows) {
@@ -303,7 +374,7 @@ for (const cat of config.categories) {
         error = e.message;
         if (++fails >= 2) break; // the board keeps refusing; try again next build
       }
-      await sleep(gap);
+      if (!viaEgo) await sleep(gap);
     }
     // Keep last time's posts from a board that couldn't be read this time.
     if (error && prevCat) {
