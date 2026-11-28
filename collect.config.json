@@ -36,6 +36,19 @@
         { "site": "mlbpark", "name": "엠팍 키움 말머리", "url": "https://mlbpark.donga.com/mp/b.php?search_select=sct&search_input=&select=spf&m=search&b=kbotown&query=%ED%82%A4%EC%9B%80", "requireKeyword": false },
         { "site": "fmkorea", "name": "에펨 국야", "url": "https://www.fmkorea.com/index.php?mid=baseball", "browser": "ego", "requireKeyword": true, "search": true, "pages": 1, "skipKeywords": ["혀"] }
       ]
+    },
+    {
+      "id": "ai",
+      "name": "AI 활용",
+      "color": "#3b6fd1",
+      "keywords": ["AI"],
+      "minRecommend": 5,
+      "minComments": 5,
+      "youtube": { "skipKeywords": ["AI"] },
+      "sources": [
+        { "site": "dcinside", "name": "디시 AI 활용 갤", "url": "https://gall.dcinside.com/mgallery/board/lists/?id=ai_utilize", "requireKeyword": false },
+        { "site": "fmkorea", "name": "에펨 AI", "url": "https://www.fmkorea.com/index.php?mid=ai", "browser": "ego", "requireKeyword": false }
+      ]
     }
   ]
 }
